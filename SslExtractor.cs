@@ -19,7 +19,7 @@ class Program
 {
     static async Task Main()
     {
-        string url = "https://www.plus.diolinux.com.br"; // Substitua pela URL desejada
+        string url = "https://www.bing.com"; // Substitua pela URL desejada
 
         try
         {
