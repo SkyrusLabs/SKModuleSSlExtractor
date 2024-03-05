@@ -76,7 +76,6 @@ public class CertificateInfoModule
             SignatureAlgorithm = certificate.SignatureAlgorithm?.FriendlyName,
             KeyUsage = certificate.Extensions["2.5.29.15"]?.Critical,
             ExtendedKeyUsage = GetExtendedKeyUsage(certificate),
-            // Adicione outras propriedades que deseja incluir no objeto JSON
         };
 
         // Converter o objeto para uma string JSON formatada
