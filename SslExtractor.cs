@@ -7,20 +7,16 @@
 */
 
 using System;
-using System.IO;
 using System.Net;
-using System.Net.Sockets;
-using System.Net.Http;
 using System.Net.Security;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
-using System.Threading.Tasks;
+using System.Text.Json;
 
-class Program
+public class CertificateInfoModule
 {
-    static async Task Main()
+    public static async Task<string> GetCertificateInfoJson(string url)
     {
-        string url = "https://www.bing.com"; // Substitua pela URL desejada
-
         try
         {
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true;
@@ -32,14 +28,20 @@ class Program
                 // Obter as informações do certificado do servidor
                 X509Certificate2 certificate = GetCertificate(response);
 
-                // Exibir as informações do certificado
-                DisplayCertificateInfo(certificate);
+                // Verificar se o certificado foi obtido com sucesso antes de criar a string JSON
+                if (certificate != null)
+                {
+                    // Obter a string JSON com as informações do certificado
+                    return GetCertificateInfoJson(certificate);
+                }
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Erro: {ex.Message}");
         }
+
+        return null;
     }
 
     private static X509Certificate2 GetCertificate(HttpResponseMessage response)
@@ -58,18 +60,45 @@ class Program
         return null;
     }
 
-    private static void DisplayCertificateInfo(X509Certificate2 certificate)
+    private static string GetCertificateInfoJson(X509Certificate2 certificate)
     {
-        if (certificate != null)
+        // Extrair as informações do certificado
+        var certificateInfo = new
         {
-            Console.WriteLine("Informações do Certificado SSL:");
-            Console.WriteLine($"Emissor: {certificate.Issuer}");
-            Console.WriteLine($"Assunto: {certificate.Subject}");
-            Console.WriteLine($"Válido de: {certificate.NotBefore} até: {certificate.NotAfter}");
-        }
-        else
+            Subject = certificate.Subject,
+            Issuer = certificate.Issuer,
+            Thumbprint = certificate.Thumbprint,
+            SerialNumber = certificate.SerialNumber,
+            NotBefore = certificate.NotBefore,
+            NotAfter = certificate.NotAfter,
+            Version = certificate.Version,
+            PublicKeyAlgorithm = certificate.PublicKey?.Oid.FriendlyName,
+            SignatureAlgorithm = certificate.SignatureAlgorithm?.FriendlyName,
+            KeyUsage = certificate.Extensions["2.5.29.15"]?.Critical,
+            ExtendedKeyUsage = GetExtendedKeyUsage(certificate),
+            // Adicione outras propriedades que deseja incluir no objeto JSON
+        };
+
+        // Converter o objeto para uma string JSON formatada
+        return JsonSerializer.Serialize(certificateInfo, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private static string[] GetExtendedKeyUsage(X509Certificate2 certificate)
+    {
+        var extendedKeyUsage = new List<string>();
+
+        foreach (var extension in certificate.Extensions)
         {
-            Console.WriteLine("Não foi possível obter informações do certificado.");
+            if (extension.Oid.Value.Equals("2.5.29.37")) // OID para Extended Key Usage
+            {
+                var extendedKeyUsageExtension = new X509EnhancedKeyUsageExtension(extension, false);
+                foreach (var oid in extendedKeyUsageExtension.EnhancedKeyUsages)
+                {
+                    extendedKeyUsage.Add(oid.FriendlyName);
+                }
+            }
         }
+
+        return extendedKeyUsage.ToArray();
     }
 }
